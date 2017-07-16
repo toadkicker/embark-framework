@@ -35,10 +35,10 @@ class Contract extends EmbarkJS {
     this._originalContractObject = this.ContractClass.at(this.address);
     this._methods = Object.getOwnPropertyNames(this._originalContractObject).filter(p => {
       // TODO: check for forbidden properties
-      if (self.eventList.includes(p)) {
+      if (this.eventList.includes(p)) {
 
-        self[p] = function () {
-          const promise = new messageEvents();
+        this[p] = function () {
+          const promise = this.messageEvents();
           const args = Array.prototype.slice.call(arguments);
           args.push((err, result) => {
             if (err) {
@@ -48,15 +48,15 @@ class Contract extends EmbarkJS {
             }
           });
 
-          self._originalContractObject[p].apply(self._originalContractObject[p], args);
+          this._originalContractObject[p].apply(this._originalContractObject[p], args);
           return promise;
         };
         return true;
-      } else if (typeof self._originalContractObject[p] === 'function') {
-        self[p] = function (_args) {
+      } else if (typeof this._originalContractObject[p] === 'function') {
+        this[p] = function (_args) {
           const args = Array.prototype.slice.call(arguments);
-          const fn = self._originalContractObject[p];
-          const props = self.abi.find((x) => x.name === p);
+          const fn = this._originalContractObject[p];
+          const props = this.abi.find((x) => x.name === p);
 
           const promise = new Promise((resolve, reject) => {
             args.push((err, transaction) => {
@@ -66,7 +66,7 @@ class Contract extends EmbarkJS {
               }
 
               const getConfirmation = () => {
-                self.web3.eth.getTransactionReceipt(transaction, (err, receipt) => {
+                this.web3.eth.getTransactionReceipt(transaction, (err, receipt) => {
                   if (err) {
                     return reject(err);
                   }
@@ -113,7 +113,6 @@ class Contract extends EmbarkJS {
   }
 
   deploy(args, _options) {
-    const self = this;
     let contractParams;
     const options = _options || {};
 
@@ -133,8 +132,8 @@ class Contract extends EmbarkJS {
           reject(err);
         } else if (transaction.address !== undefined) {
           resolve(new EmbarkJS.Contract({
-            abi: self.abi,
-            code: self.code,
+            abi: this.abi,
+            code: this.code,
             address: transaction.address
           }));
         }
@@ -177,6 +176,16 @@ class Contract extends EmbarkJS {
 
 class Storage extends EmbarkJS {
 
+  constructor(options) {
+    super();
+    this.protocol = options.protocol;
+    this.server = options.server;
+    this.port = options.port;
+  }
+
+  getUrl() {
+    return `${this.protocol}${this.server}:${this.port}`;
+  }
   saveText(text) {
     return this.currentStorage.saveText(text);
   }
@@ -194,23 +203,22 @@ class Storage extends EmbarkJS {
   }
 
   setProvider(provider, options) {
-    const self = this;
     return new Promise((resolve, reject) => {
       if (provider.toLowerCase() === EmbarkJS.Storage.Providers.IPFS) {
         //I don't think currentStorage is used anywhere, this might not be needed
         //for now until additional storage providers are supported. But keeping it
         //anyways
-        self.currentStorage = EmbarkJS.Storage.IPFS;
+        this.currentStorage = EmbarkJS.Storage.IPFS;
 
         try {
           if (options === undefined) {
-            self.ipfsConnection = IpfsApi('localhost', '5001');
+            this.ipfsConnection = IpfsApi('localhost', '5001');
           } else {
-            self.ipfsConnection = IpfsApi(options.server, options.port);
+            this.ipfsConnection = IpfsApi(this.server, this.port);
           }
-          resolve(self);
+          resolve(this);
         } catch (err) {
-          self.ipfsConnection = null;
+          this.ipfsConnection = null;
           reject(new Error('Failed to connect to IPFS'));
         }
       } else if (provider.toLowerCase() === EmbarkJS.Storage.SWARM) {
@@ -308,7 +316,7 @@ class IPFS extends Storage {
   }
 
   getUrl(hash) {
-    return `http://localhost:8080/ipfs/${hash}`;
+    return `${this.protocol}${this.server}:${this.port}/ipfs/${hash}`;
   }
 }
 
@@ -318,7 +326,6 @@ class IPFS extends Storage {
 
 class Messages extends EmbarkJS {
   setProvider(provider, options) {
-    const self = this;
     let ipfs;
     if (provider === 'whisper') {
       this.currentMessages = EmbarkJS.Messages.Whisper;
@@ -335,7 +342,7 @@ class Messages extends EmbarkJS {
         } else if (web3.version.whisper >= 5) {
           console.log("this version of whisper is not supported yet; try a version of geth bellow 1.6.1");
         } else {
-          self.currentMessages.identity = this.web3.shh.newIdentity();
+          this.currentMessages.identity = this.web3.shh.newIdentity();
         }
       });
     } else if (provider === 'orbit') {
@@ -491,7 +498,6 @@ class Orbit extends Messages {
   }
 
   listenTo(options) {
-    const self = this;
     let topics = options.topic || options.topics;
 
     if (Array.isArray(topics)) {
@@ -520,7 +526,7 @@ class Orbit extends Messages {
     this.orbit.events.on('message', (channel, message) => {
       // TODO: looks like sometimes it's receving messages from all topics
       if (topics !== channel) return;
-      self.orbit.getPost(message.payload.value, true).then((post) => {
+      this.orbit.getPost(message.payload.value, true).then((post) => {
         const data = {
           topic: channel,
           data: post.content,
