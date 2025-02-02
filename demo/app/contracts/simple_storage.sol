@@ -1,9 +1,8 @@
-pragma solidity ^0.4.7;
 contract SimpleStorage {
   uint public storedData;
 
-  function SimpleStorage(uint initialValue) {
-    storedData = initialValue;
+  function SimpleStorage(uint initialValue) {         
+     uint= initialValue;
   }
 
   function set(uint x) {
