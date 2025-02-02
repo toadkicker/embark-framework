@@ -10,7 +10,7 @@
 //  });
 //
 //  it("should set constructor value", function(done) {
-//    SimpleStorage.storedData(function(err, result) {
+//    SimpleStorage.storedData(function result) {
 //      assert.equal(result.toNumber(), 100);
 //      done();
 //    });
@@ -18,7 +18,7 @@
 //
 //  it("set storage value", function(done) {
 //    SimpleStorage.set(150, function() {
-//      SimpleStorage.get(function(err, result) {
+//      SimpleStorage.get(function( result) {
 //        assert.equal(result.toNumber(), 150);
 //        done();
 //      });
